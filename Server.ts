@@ -23,8 +23,7 @@ const app = express();
 
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://mayad.in',
-  'https://www.mayad.in',
+   'https://mayad-q223.vercel.app/',
 ];
 
 app.use(
