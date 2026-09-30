@@ -1,4 +1,3 @@
-
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -9,10 +8,10 @@ import connectDB from './config/db';
 import watchlistRoutes from './routes/watchlistRoutes';
 import artistRoutes from './routes/artistRoutes';
 import adminRoutes from './routes/adminRoutes';
-import movieRoutes from "./routes/movieRoutes";
-import artistMediaRoutes from "./routes/artistMediaRoutes";
-import inquiryRoutes from "./routes/inquiryRoutes";
-import jobRoutes from "./routes/jobRoutes";
+import movieRoutes from './routes/movieRoutes';
+import artistMediaRoutes from './routes/artistMediaRoutes';
+import inquiryRoutes from './routes/inquiryRoutes';
+import jobRoutes from './routes/jobRoutes';
 
 dotenv.config();
 
@@ -22,50 +21,50 @@ const app = express();
 // MIDDLEWARE
 // ============================================================
 
-// CORS configuration for Next.js frontend
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://mayad.in',
+  'https://www.mayad.in',
+];
+
 app.use(
   cors({
-    origin: 'http://localhost:3000',
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   })
 );
 
-// Parse JSON request bodies
-app.use(express.json());
-
-// Parse URL-encoded request bodies
+app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true }));
-
-// Parse cookies for admin authentication
 app.use(cookieParser());
 
 // ============================================================
-// DATABASE CONNECTION
+// DATABASE
 // ============================================================
 
 connectDB();
 
 // ============================================================
-// WATCHLIST ROUTES
+// ROUTES
 // ============================================================
 
 app.use('/api/watchlist', watchlistRoutes);
-
-// ============================================================
-// ARTIST PORTAL ROUTES
-// ============================================================
-
 app.use('/api/artist', artistRoutes);
-
-// ============================================================
-// ADMIN PORTAL ROUTES
-// ============================================================
-
 app.use('/api/admin', adminRoutes);
-app.use("/api/movies", movieRoutes);
-app.use("/api/artist-media", artistMediaRoutes);
-app.use("/api/inquiries", inquiryRoutes);
-app.use("/api/jobs", jobRoutes);
+app.use('/api/movies', movieRoutes);
+app.use('/api/artist-media', artistMediaRoutes);
+app.use('/api/inquiries', inquiryRoutes);
+app.use('/api/jobs', jobRoutes);
+
+// ============================================================
+// ROOT
+// ============================================================
 
 app.get('/', (_req, res) => {
   res.json({
@@ -75,13 +74,15 @@ app.get('/', (_req, res) => {
 });
 
 // ============================================================
-// SERVER
+// VERCEL / LOCAL SERVER
 // ============================================================
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(
-    `🚀 MAYAD Backend running on http://localhost:${PORT}`
-  );
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 MAYAD Backend running on http://localhost:${PORT}`);
+  });
+}
+
+export default app;
