@@ -23,13 +23,15 @@ const app = express();
 
 const allowedOrigins = [
   'http://localhost:3000',
-   'https://mayad-q223.vercel.app',
+  'http://localhost:5000',
+  'https://mayad-q223.vercel.app',
+  'https://mayad-backend.vercel.app',
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
