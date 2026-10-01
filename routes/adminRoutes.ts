@@ -12,6 +12,8 @@ import {
   deleteAdminArtist,
   adminCreateArtist,
   adminUpdateArtist,
+  getAdminPublicArtists,
+  adminDeletePublicArtist,
 } from "../controllers/adminController";
 
 import { adminAuth } from "../middleware/adminAuthMiddleware";
@@ -20,6 +22,12 @@ import {
   adminUpdateInquiryStatus,
   adminDeleteInquiry,
 } from "../controllers/inquiryController";
+import {
+  adminGetTalentApplications,
+  adminGetTalentApplicationDetail,
+  adminUpdateTalentApplicationStatus,
+  adminDeleteTalentApplication,
+} from "../controllers/talentController";
 
 const router = Router();
 
@@ -44,7 +52,15 @@ router.post("/logout", adminLogout);
 router.get("/stats", adminAuth, getAdminStats);
 
 // ============================================================
-// ARTIST MANAGEMENT
+// PUBLIC ARTIST MANAGEMENT (FOR ADD ARTIST TAB)
+// ============================================================
+router.get("/public-artists", adminAuth, getAdminPublicArtists);
+router.post("/public-artists", adminAuth, adminCreateArtist);
+router.put("/public-artists/:id", adminAuth, adminUpdateArtist);
+router.delete("/public-artists/:id", adminAuth, adminDeletePublicArtist);
+
+// ============================================================
+// REGISTERED ARTIST ACCOUNTS MANAGEMENT (FOR ARTIST ACCOUNTS TAB)
 // ============================================================
 
 // Create artist directly by admin
@@ -79,5 +95,13 @@ router.delete(
 router.get("/inquiries", adminAuth, adminGetInquiries);
 router.patch("/inquiries/:id/status", adminAuth, adminUpdateInquiryStatus);
 router.delete("/inquiries/:id", adminAuth, adminDeleteInquiry);
+
+// ============================================================
+// TALENT APPLICATIONS / REGISTRATIONS MANAGEMENT
+// ============================================================
+router.get("/talent-applications", adminAuth, adminGetTalentApplications);
+router.get("/talent-applications/:id", adminAuth, adminGetTalentApplicationDetail);
+router.put("/talent-applications/:id/status", adminAuth, adminUpdateTalentApplicationStatus);
+router.delete("/talent-applications/:id", adminAuth, adminDeleteTalentApplication);
 
 export default router;

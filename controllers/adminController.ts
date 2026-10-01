@@ -1108,9 +1108,55 @@ export const deleteAdminArtist = async (
 };
 
 // ============================================================
-// CREATE ARTIST DIRECTLY (ADMIN ONLY)
-// POST /api/admin/artists
+// PUBLIC ARTIST MANAGEMENT (FOR ADD ARTIST TAB & PUBLIC DIRECTORY)
 // ============================================================
+
+export const getAdminPublicArtists = async (
+  _req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const legacyArtists = await PublicArtist.find().sort({ createdAt: -1 }).lean();
+
+    const formatted = legacyArtists.map((artist: any) => ({
+      id: artist._id.toString(),
+      legacyId: artist.legacyId || artist._id.toString(),
+      fullName: artist.name || artist.originalName || "Artist",
+      stageName: artist.originalName || artist.name || "Artist",
+      category: artist.role || "Actor",
+      secondaryCategory: artist.secondaryCategory || "",
+      email: artist.email || "",
+      phone: artist.phone || "",
+      location: artist.birthPlace || "Rajasthan",
+      experience: artist.experience || "5+ Years",
+      bio: artist.bio || "",
+      profilePhoto: artist.imageUrl || "/Default.jpg",
+      imageUrl: artist.imageUrl || "/Default.jpg",
+      showreel: artist.showreel || "",
+      imdb: artist.imdb || "",
+      instagram: artist.instagram || "",
+      languages: artist.languages || [],
+      highlights: artist.highlights || [],
+      tag: artist.tag || "STAR",
+      isVerified: true,
+      accountStatus: "Approved",
+      createdAt: artist.createdAt,
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: formatted.length,
+      artists: formatted,
+    });
+  } catch (error: any) {
+    console.error("Get public artists error:", error);
+    res.status(500).json({
+      success: false,
+      message: error?.message || "Failed to fetch public artists",
+    });
+  }
+};
+
 export const adminCreateArtist = async (
   req: Request,
   res: Response
@@ -1143,53 +1189,58 @@ export const adminCreateArtist = async (
 
     const cleanName = fullName.trim();
     const cleanStageName = stageName ? stageName.trim() : cleanName;
-    const slug = cleanStageName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-    
-    // Auto generate email if not provided
-    const artistEmail = (email && email.trim())
-      ? email.trim().toLowerCase()
-      : `${slug}-${Date.now().toString().slice(-4)}@mayad.com`;
+    const slug = cleanStageName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + `-${Date.now().toString().slice(-4)}`;
+    const legacyId = `pa_${Date.now()}`;
 
-    const existingArtist = await ArtistModel.findOne({ email: artistEmail });
-    if (existingArtist) {
-      res.status(409).json({
-        success: false,
-        message: "An artist with this email already exists",
-      });
-      return;
-    }
-
-    // Default password for admin created artist
-    const hashedPassword = await bcrypt.hash("MayadArtist@123", 10);
-
-    const artist = await ArtistModel.create({
-      fullName: cleanName,
-      stageName: cleanStageName,
-      email: artistEmail,
-      phone: phone ? phone.trim() : undefined,
-      password: hashedPassword,
-      category: category || "Actor",
+    const newPublicArtist = await PublicArtist.create({
+      legacyId,
+      slug,
+      name: cleanName,
+      originalName: cleanStageName,
+      role: category || "Actor",
       secondaryCategory: secondaryCategory || "",
+      email: email ? email.trim().toLowerCase() : "",
+      phone: phone ? phone.trim() : "",
       experience: experience || "5+ Years",
-      location: location || "Rajasthan",
-      languages: Array.isArray(languages) ? languages : (typeof languages === "string" ? languages.split(",").map((l: string) => l.trim()) : ["Rajasthani", "Hindi"]),
+      birthPlace: location || "Rajasthan",
+      imageUrl: profilePhoto || "/Default.jpg",
       bio: bio || "",
-      profilePhoto: profilePhoto || "",
+      highlights: [category, secondaryCategory].filter(Boolean),
       showreel: showreel || "",
       imdb: imdb || "",
       instagram: instagram || "",
-      role: "artist",
+      languages: Array.isArray(languages) ? languages : (typeof languages === "string" ? languages.split(",").map((l: string) => l.trim()) : ["Rajasthani", "Hindi"]),
+    });
+
+    const artistData = {
+      id: newPublicArtist._id.toString(),
+      fullName: newPublicArtist.name,
+      stageName: newPublicArtist.originalName,
+      category: newPublicArtist.role,
+      secondaryCategory: newPublicArtist.secondaryCategory,
+      email: newPublicArtist.email,
+      phone: newPublicArtist.phone,
+      location: newPublicArtist.birthPlace,
+      experience: newPublicArtist.experience,
+      bio: newPublicArtist.bio,
+      profilePhoto: newPublicArtist.imageUrl,
+      imageUrl: newPublicArtist.imageUrl,
+      showreel: newPublicArtist.showreel,
+      imdb: newPublicArtist.imdb,
+      instagram: newPublicArtist.instagram,
+      languages: newPublicArtist.languages,
       isVerified: true,
       accountStatus: "Approved",
-    });
+      createdAt: newPublicArtist.createdAt,
+    };
 
     res.status(201).json({
       success: true,
       message: "Artist added successfully and published to /artists directory",
-      artist,
+      artist: artistData,
     });
   } catch (error: any) {
-    console.error("Create artist error:", error);
+    console.error("Create public artist error:", error);
     res.status(500).json({
       success: false,
       message: error?.message || "Failed to add artist",
@@ -1197,10 +1248,6 @@ export const adminCreateArtist = async (
   }
 };
 
-// ============================================================
-// UPDATE ARTIST DETAILS (ADMIN ONLY)
-// PUT /api/admin/artists/:id
-// ============================================================
 export const adminUpdateArtist = async (
   req: Request,
   res: Response
@@ -1209,7 +1256,7 @@ export const adminUpdateArtist = async (
     const rawId = req.params.id;
     const id = (Array.isArray(rawId) ? rawId[0] : rawId) as string;
 
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    if (!id) {
       res.status(400).json({
         success: false,
         message: "Invalid artist ID",
@@ -1234,44 +1281,68 @@ export const adminUpdateArtist = async (
       instagram,
     } = req.body;
 
-    const artist = await ArtistModel.findById(id);
-    if (!artist) {
+    let publicArtist: any = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      publicArtist = await PublicArtist.findById(id);
+    }
+    if (!publicArtist) {
+      publicArtist = await PublicArtist.findOne({ legacyId: id });
+    }
+
+    if (!publicArtist) {
       res.status(404).json({
         success: false,
-        message: "Artist not found",
+        message: "Public artist not found",
       });
       return;
     }
 
-    if (fullName !== undefined) artist.fullName = fullName.trim();
-    if (stageName !== undefined) artist.stageName = stageName.trim();
-    if (email !== undefined) artist.email = email.trim().toLowerCase();
-    if (phone !== undefined) artist.phone = phone.trim();
-    if (category !== undefined) artist.category = category;
-    if (secondaryCategory !== undefined) artist.secondaryCategory = secondaryCategory;
-    if (experience !== undefined) artist.experience = experience;
-    if (location !== undefined) artist.location = location;
+    if (fullName !== undefined) publicArtist.name = fullName.trim();
+    if (stageName !== undefined) publicArtist.originalName = stageName.trim();
+    if (category !== undefined) publicArtist.role = category;
+    if (secondaryCategory !== undefined) publicArtist.secondaryCategory = secondaryCategory;
+    if (email !== undefined) publicArtist.email = email.trim().toLowerCase();
+    if (phone !== undefined) publicArtist.phone = phone.trim();
+    if (experience !== undefined) publicArtist.experience = experience;
+    if (location !== undefined) publicArtist.birthPlace = location;
+    if (bio !== undefined) publicArtist.bio = bio;
+    if (profilePhoto !== undefined) publicArtist.imageUrl = profilePhoto;
+    if (showreel !== undefined) publicArtist.showreel = showreel;
+    if (imdb !== undefined) publicArtist.imdb = imdb;
+    if (instagram !== undefined) publicArtist.instagram = instagram;
     if (languages !== undefined) {
-      artist.languages = Array.isArray(languages)
+      publicArtist.languages = Array.isArray(languages)
         ? languages
         : typeof languages === "string"
         ? languages.split(",").map((l: string) => l.trim())
-        : artist.languages;
+        : publicArtist.languages;
     }
-    if (bio !== undefined) artist.bio = bio;
-    if (profilePhoto !== undefined) artist.profilePhoto = profilePhoto;
-    if (showreel !== undefined) artist.showreel = showreel;
-    if (imdb !== undefined) artist.imdb = imdb;
-    if (instagram !== undefined) artist.instagram = instagram;
 
-    await artist.save();
+    await publicArtist.save();
 
     res.status(200).json({
       success: true,
       message: "Artist details updated successfully",
       artist: {
-        ...artist.toObject(),
-        id: artist._id.toString(),
+        id: publicArtist._id.toString(),
+        fullName: publicArtist.name,
+        stageName: publicArtist.originalName,
+        category: publicArtist.role,
+        secondaryCategory: publicArtist.secondaryCategory,
+        email: publicArtist.email,
+        phone: publicArtist.phone,
+        location: publicArtist.birthPlace,
+        experience: publicArtist.experience,
+        bio: publicArtist.bio,
+        profilePhoto: publicArtist.imageUrl,
+        imageUrl: publicArtist.imageUrl,
+        showreel: publicArtist.showreel,
+        imdb: publicArtist.imdb,
+        instagram: publicArtist.instagram,
+        languages: publicArtist.languages,
+        isVerified: true,
+        accountStatus: "Approved",
+        createdAt: publicArtist.createdAt,
       },
     });
   } catch (error: any) {
@@ -1279,6 +1350,51 @@ export const adminUpdateArtist = async (
     res.status(500).json({
       success: false,
       message: error?.message || "Failed to update artist details",
+    });
+  }
+};
+
+export const adminDeletePublicArtist = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const id = (Array.isArray(rawId) ? rawId[0] : rawId) as string;
+
+    if (!id) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid artist ID",
+      });
+      return;
+    }
+
+    let deleted: any = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      deleted = await PublicArtist.findByIdAndDelete(id);
+    }
+    if (!deleted) {
+      deleted = await PublicArtist.findOneAndDelete({ legacyId: id });
+    }
+
+    if (!deleted) {
+      res.status(404).json({
+        success: false,
+        message: "Public artist not found",
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Public artist deleted successfully",
+    });
+  } catch (error: any) {
+    console.error("Delete public artist error:", error);
+    res.status(500).json({
+      success: false,
+      message: error?.message || "Failed to delete public artist",
     });
   }
 };

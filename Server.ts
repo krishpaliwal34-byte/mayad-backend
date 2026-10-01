@@ -13,6 +13,7 @@ import artistMediaRoutes from './routes/artistMediaRoutes';
 import inquiryRoutes from './routes/inquiryRoutes';
 import jobRoutes from './routes/jobRoutes';
 import blogRoutes from './routes/blogRoutes';
+import talentRoutes from './routes/talentRoutes';
 
 dotenv.config();
 
@@ -27,6 +28,7 @@ const allowedOrigins = [
   'http://localhost:5000',
   'https://mayad-q223.vercel.app',
   'https://mayad-backend.vercel.app',
+  'https://www.mayadstudio.com',
 ];
 
 app.use(
@@ -64,6 +66,7 @@ app.use('/api/artist-media', artistMediaRoutes);
 app.use('/api/inquiries', inquiryRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/blogs', blogRoutes);
+app.use('/api/talent', talentRoutes);
 
 // ============================================================
 // ROOT

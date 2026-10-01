@@ -6,12 +6,20 @@ export interface IPublicArtist extends Document {
   name: string;
   originalName?: string;
   role: string;
+  secondaryCategory?: string;
+  email?: string;
+  phone?: string;
+  experience?: string;
   imageUrl: string;
   bio: string;
   dob?: Date;
   birthPlace?: string;
   highlights: string[];
   tag?: string;
+  showreel?: string;
+  imdb?: string;
+  instagram?: string;
+  languages?: string[];
 }
 
 const PublicArtistSchema = new Schema<IPublicArtist>(
@@ -35,6 +43,10 @@ const PublicArtistSchema = new Schema<IPublicArtist>(
 
     originalName: String,
     role: String,
+    secondaryCategory: String,
+    email: String,
+    phone: String,
+    experience: String,
 
     imageUrl: {
       type: String,
@@ -55,6 +67,13 @@ const PublicArtistSchema = new Schema<IPublicArtist>(
     },
 
     tag: String,
+    showreel: String,
+    imdb: String,
+    instagram: String,
+    languages: {
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,
