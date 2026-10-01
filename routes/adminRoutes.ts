@@ -10,6 +10,8 @@ import {
   getAdminArtistDetail,
   updateAdminArtistStatus,
   deleteAdminArtist,
+  adminCreateArtist,
+  adminUpdateArtist,
 } from "../controllers/adminController";
 
 import { adminAuth } from "../middleware/adminAuthMiddleware";
@@ -44,6 +46,12 @@ router.get("/stats", adminAuth, getAdminStats);
 // ============================================================
 // ARTIST MANAGEMENT
 // ============================================================
+
+// Create artist directly by admin
+router.post("/artists", adminAuth, adminCreateArtist);
+
+// Update artist details by admin
+router.put("/artists/:id", adminAuth, adminUpdateArtist);
 
 // Get artists with pagination, search and status filter
 router.get("/artists", adminAuth, getAdminArtists);

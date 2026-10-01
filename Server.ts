@@ -12,6 +12,7 @@ import movieRoutes from './routes/movieRoutes';
 import artistMediaRoutes from './routes/artistMediaRoutes';
 import inquiryRoutes from './routes/inquiryRoutes';
 import jobRoutes from './routes/jobRoutes';
+import blogRoutes from './routes/blogRoutes';
 
 dotenv.config();
 
@@ -62,6 +63,7 @@ app.use('/api/movies', movieRoutes);
 app.use('/api/artist-media', artistMediaRoutes);
 app.use('/api/inquiries', inquiryRoutes);
 app.use('/api/jobs', jobRoutes);
+app.use('/api/blogs', blogRoutes);
 
 // ============================================================
 // ROOT

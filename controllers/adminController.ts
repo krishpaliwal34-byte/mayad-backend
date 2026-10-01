@@ -1106,3 +1106,179 @@ export const deleteAdminArtist = async (
     });
   }
 };
+
+// ============================================================
+// CREATE ARTIST DIRECTLY (ADMIN ONLY)
+// POST /api/admin/artists
+// ============================================================
+export const adminCreateArtist = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const {
+      fullName,
+      stageName,
+      email,
+      phone,
+      category,
+      secondaryCategory,
+      experience,
+      location,
+      languages,
+      bio,
+      profilePhoto,
+      showreel,
+      imdb,
+      instagram,
+    } = req.body;
+
+    if (!fullName || !fullName.trim()) {
+      res.status(400).json({
+        success: false,
+        message: "Artist full name is required",
+      });
+      return;
+    }
+
+    const cleanName = fullName.trim();
+    const cleanStageName = stageName ? stageName.trim() : cleanName;
+    const slug = cleanStageName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    
+    // Auto generate email if not provided
+    const artistEmail = (email && email.trim())
+      ? email.trim().toLowerCase()
+      : `${slug}-${Date.now().toString().slice(-4)}@mayad.com`;
+
+    const existingArtist = await ArtistModel.findOne({ email: artistEmail });
+    if (existingArtist) {
+      res.status(409).json({
+        success: false,
+        message: "An artist with this email already exists",
+      });
+      return;
+    }
+
+    // Default password for admin created artist
+    const hashedPassword = await bcrypt.hash("MayadArtist@123", 10);
+
+    const artist = await ArtistModel.create({
+      fullName: cleanName,
+      stageName: cleanStageName,
+      email: artistEmail,
+      phone: phone ? phone.trim() : undefined,
+      password: hashedPassword,
+      category: category || "Actor",
+      secondaryCategory: secondaryCategory || "",
+      experience: experience || "5+ Years",
+      location: location || "Rajasthan",
+      languages: Array.isArray(languages) ? languages : (typeof languages === "string" ? languages.split(",").map((l: string) => l.trim()) : ["Rajasthani", "Hindi"]),
+      bio: bio || "",
+      profilePhoto: profilePhoto || "",
+      showreel: showreel || "",
+      imdb: imdb || "",
+      instagram: instagram || "",
+      role: "artist",
+      isVerified: true,
+      accountStatus: "Approved",
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Artist added successfully and published to /artists directory",
+      artist,
+    });
+  } catch (error: any) {
+    console.error("Create artist error:", error);
+    res.status(500).json({
+      success: false,
+      message: error?.message || "Failed to add artist",
+    });
+  }
+};
+
+// ============================================================
+// UPDATE ARTIST DETAILS (ADMIN ONLY)
+// PUT /api/admin/artists/:id
+// ============================================================
+export const adminUpdateArtist = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const id = (Array.isArray(rawId) ? rawId[0] : rawId) as string;
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid artist ID",
+      });
+      return;
+    }
+
+    const {
+      fullName,
+      stageName,
+      email,
+      phone,
+      category,
+      secondaryCategory,
+      experience,
+      location,
+      languages,
+      bio,
+      profilePhoto,
+      showreel,
+      imdb,
+      instagram,
+    } = req.body;
+
+    const artist = await ArtistModel.findById(id);
+    if (!artist) {
+      res.status(404).json({
+        success: false,
+        message: "Artist not found",
+      });
+      return;
+    }
+
+    if (fullName !== undefined) artist.fullName = fullName.trim();
+    if (stageName !== undefined) artist.stageName = stageName.trim();
+    if (email !== undefined) artist.email = email.trim().toLowerCase();
+    if (phone !== undefined) artist.phone = phone.trim();
+    if (category !== undefined) artist.category = category;
+    if (secondaryCategory !== undefined) artist.secondaryCategory = secondaryCategory;
+    if (experience !== undefined) artist.experience = experience;
+    if (location !== undefined) artist.location = location;
+    if (languages !== undefined) {
+      artist.languages = Array.isArray(languages)
+        ? languages
+        : typeof languages === "string"
+        ? languages.split(",").map((l: string) => l.trim())
+        : artist.languages;
+    }
+    if (bio !== undefined) artist.bio = bio;
+    if (profilePhoto !== undefined) artist.profilePhoto = profilePhoto;
+    if (showreel !== undefined) artist.showreel = showreel;
+    if (imdb !== undefined) artist.imdb = imdb;
+    if (instagram !== undefined) artist.instagram = instagram;
+
+    await artist.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Artist details updated successfully",
+      artist: {
+        ...artist.toObject(),
+        id: artist._id.toString(),
+      },
+    });
+  } catch (error: any) {
+    console.error("Update artist error:", error);
+    res.status(500).json({
+      success: false,
+      message: error?.message || "Failed to update artist details",
+    });
+  }
+};

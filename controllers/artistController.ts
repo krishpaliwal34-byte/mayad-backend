@@ -1087,440 +1087,133 @@ export const resetPassword = async (
 
     } = req.body;
 
-    if (
-
-      typeof token !== "string" ||
-
-      typeof newPassword !== "string" ||
-
-      typeof confirmPassword !== "string" ||
-
-      !token ||
-
-      !newPassword ||
-
-      !confirmPassword
-
-    ) {
-
-      res.status(400).json({
-
-        success: false,
-
-        message:
-
-          "Reset token, new password, and confirm password are required",
-
-      });
-
-      return;
-
-    }
-
-    if (newPassword !== confirmPassword) {
-
-      res.status(400).json({
-
-        success: false,
-
-        message: "Passwords do not match",
-
-      });
-
-      return;
-
-    }
-
-    if (newPassword.length < 6) {
-
-      res.status(400).json({
-
-        success: false,
-
-        message: "Password must be at least 6 characters",
-
-      });
-
-      return;
-
-    }
-
-    const tokenHash = crypto
-
-      .createHash("sha256")
-
-      .update(token)
-
-      .digest("hex");
-
-    const artist = await Artist.findOne({
-
-      resetPasswordTokenHash: tokenHash,
-
-      resetPasswordExpiresAt: {
-
-        $gt: new Date(),
-
-      },
-
-    }).select(
-
-      "+password +resetPasswordTokenHash +resetPasswordExpiresAt"
-
-    );
-
-    if (!artist) {
-
-      res.status(400).json({
-
-        success: false,
-
-        message:
-
-          "Invalid or expired password reset token. Please request a new reset link.",
-
-      });
-
-      return;
-
-    }
-
-    // Artist model's pre-save hook hashes the password.
-
-    artist.password = newPassword;
-
-    artist.resetPasswordTokenHash = undefined;
-
-    artist.resetPasswordExpiresAt = undefined;
-
-    await artist.save();
-
-    res.status(200).json({
-
-      success: true,
-
-      message:
-
-        "Password reset successfully! You can now sign in with your new password.",
-
-    });
-
-  } catch (error) {
-
-    console.error("Reset Password Error:", error);
-
-    res.status(500).json({
-
-      success: false,
-
-      message: "Server error resetting password",
-
-    });
-
-  }
-
+    if (
+      typeof token !== "string" ||
+      typeof newPassword !== "string" ||
+      typeof confirmPassword !== "string" ||
+      !token ||
+      !newPassword ||
+      !confirmPassword
+    ) {
+      res.status(400).json({
+        success: false,
+        message:
+          "Reset token, new password, and confirm password are required",
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      res.status(400).json({
+        success: false,
+        message: "Passwords do not match",
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters",
+      });
+      return;
+    }
+
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
+
+    const artist = await Artist.findOne({
+      resetPasswordTokenHash: tokenHash,
+      resetPasswordExpiresAt: {
+        $gt: new Date(),
+      },
+    }).select(
+      "+password +resetPasswordTokenHash +resetPasswordExpiresAt"
+    );
+
+    if (!artist) {
+      res.status(400).json({
+        success: false,
+        message:
+          "Invalid or expired password reset token. Please request a new reset link.",
+      });
+      return;
+    }
+
+    artist.password = newPassword;
+    artist.resetPasswordTokenHash = undefined;
+    artist.resetPasswordExpiresAt = undefined;
+    await artist.save();
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Password reset successfully! You can now sign in with your new password.",
+    });
+  } catch (error) {
+    console.error("Reset Password Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error resetting password",
+    });
+  }
 };
 
 // ============================================================
-
 // 7. GET PUBLIC ARTISTS
-
 // GET /api/artist
-
 // ============================================================
-
 export const getPublicArtists = async (
-
-  _req: Request,
-
-  res: Response
-
+  _req: Request,
+  res: Response
 ): Promise<void> => {
-
-  try {
-
-    // Fetch approved and verified registered artists
-
-    const registeredArtists = await Artist.find({
-
-      accountStatus: "Approved",
-
-      isVerified: true,
-
-    })
-
-      .select(
-
-        "fullName stageName category secondaryCategory experience location languages bio profilePhoto showreel imdb instagram isVerified createdAt"
-
-      )
-
-      .sort({ createdAt: -1 })
-
-      .lean();
-
-    // Fetch all legacy artists from publicartists collection
-
-    const legacyArtists = await PublicArtist.find()
-
-      .sort({ createdAt: -1 })
-
-      .lean();
-
-    // Convert legacy data into the frontend-compatible format
-
-    const legacyData = legacyArtists.map((artist: any) => ({
-
-      id: artist.legacyId || artist._id.toString(),
-
-      slug: artist.slug || artist.legacyId,
-
-      name: artist.name || artist.originalName || "Artist",
-
-      fullName: artist.name || artist.originalName || "Artist",
-
-      originalName: artist.originalName || artist.name,
-
-      role: artist.role || "Artist",
-
-      category: artist.role || "Artist",
-
-      secondaryCategory: "",
-
-      experience: "",
-
-      imageUrl: artist.imageUrl || "/Default.jpg",
-
-      profilePhoto: artist.imageUrl || "/Default.jpg",
-
-      bio: artist.bio || "",
-
-      dob: artist.dob,
-
-      birthPlace: artist.birthPlace,
-
-      highlights: artist.highlights || [],
-
-      tag: artist.tag || "STAR",
-
-      location: artist.birthPlace || "",
-
-      languages: [],
-
-      showreel: "",
-
-      imdb: "",
-
-      instagram: "",
-
-      isVerified: true,
-
-      createdAt: artist.createdAt,
-
-    }));
-
-    // Convert registered accounts into the same format
-
-    const registeredData = registeredArtists.map(
-
-      (artist: any) => {
-
-        const name =
-
-          artist.stageName ||
-
-          artist.fullName ||
-
-          "Artist";
-
-        const slug = name
-
-          .toLowerCase()
-
-          .trim()
-
-          .replace(/\s+/g, "-");
-
-        return {
-
-          id: artist._id.toString(),
-
-          slug,
-
-          name,
-
-          fullName: artist.fullName,
-
-          originalName: artist.fullName,
-
-          role: artist.category || "Artist",
-
-          category: artist.category || "Artist",
-
-          secondaryCategory:
-
-            artist.secondaryCategory || "",
-
-          experience: artist.experience || "",
-
-          imageUrl:
-
-            artist.profilePhoto || "/mayad.jpg",
-
-          profilePhoto:
-
-            artist.profilePhoto || "/mayad.jpg",
-
-          bio: artist.bio || "",
-
-          highlights: [
-
-            artist.category,
-
-            artist.secondaryCategory,
-
-          ].filter(Boolean),
-
-          tag: "STAR",
-
-          location: artist.location || "",
-
-          languages: artist.languages || [],
-
-          showreel: artist.showreel || "",
-
-          imdb: artist.imdb || "",
-
-          instagram: artist.instagram || "",
-
-          isVerified: artist.isVerified,
-
-          createdAt: artist.createdAt,
-
-        };
-
-      }
-
-    );
-
-    // Combine both MongoDB collections.
-
-    // Legacy records are placed first so their original
-
-    // static profile content is preserved.
-
-    const combinedArtists = [
-
-      ...legacyData,
-
-      ...registeredData,
-
-    ];
-
-    // Remove duplicates by normalized artist name
-
-    const uniqueArtists = new Map<string, any>();
-
-    for (const artist of combinedArtists) {
-
-      const key = (
-
-        artist.name ||
-
-        artist.fullName ||
-
-        artist.id
-
-      )
-
-        .toLowerCase()
-
-        .trim()
-
-        .replace(/\s+/g, " ");
-
-      if (!uniqueArtists.has(key)) {
-
-        uniqueArtists.set(key, artist);
-
-      } else {
-
-        const existing = uniqueArtists.get(key);
-
-        uniqueArtists.set(key, {
-
-          ...artist,
-
-          ...existing,
-
-          name: existing.name || artist.name,
-
-          fullName:
-
-            existing.fullName || artist.fullName,
-
-          imageUrl:
-
-            existing.imageUrl || artist.imageUrl,
-
-          profilePhoto:
-
-            existing.profilePhoto ||
-
-            artist.profilePhoto,
-
-          bio: existing.bio || artist.bio,
-
-          highlights:
-
-            existing.highlights?.length
-
-              ? existing.highlights
-
-              : artist.highlights,
-
-          isVerified:
-
-            existing.isVerified ||
-
-            artist.isVerified,
-
-        });
-
-      }
-
-    }
-
-    const finalArtists = Array.from(
-
-      uniqueArtists.values()
-
-    );
-
-    res.status(200).json({
-
-      success: true,
-
-      count: finalArtists.length,
-
-      artists: finalArtists,
-
-    });
-
-  } catch (error) {
-
-    console.error("Get Public Artists Error:", error);
-
-    res.status(500).json({
-
-      success: false,
-
-      message: "Server error retrieving artists",
-
-    });
-
-  }
-
+  try {
+    // Fetch artists ONLY from publicartists collection (created and managed by admin)
+    const legacyArtists = await PublicArtist.find()
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Convert legacy data into the frontend-compatible format
+    const legacyData = legacyArtists.map((artist: any) => ({
+      id: artist.legacyId || artist._id.toString(),
+      slug: artist.slug || artist.legacyId || artist._id.toString(),
+      name: artist.name || artist.originalName || "Artist",
+      fullName: artist.name || artist.originalName || "Artist",
+      originalName: artist.originalName || artist.name,
+      role: artist.role || "Artist",
+      category: artist.role || "Artist",
+      secondaryCategory: "",
+      experience: "",
+      imageUrl: artist.imageUrl || "/Default.jpg",
+      profilePhoto: artist.imageUrl || "/Default.jpg",
+      bio: artist.bio || "",
+      dob: artist.dob,
+      birthPlace: artist.birthPlace,
+      highlights: artist.highlights || [],
+      tag: artist.tag || "STAR",
+      location: artist.birthPlace || "",
+      languages: [],
+      showreel: "",
+      imdb: "",
+      instagram: "",
+      isVerified: true,
+      createdAt: artist.createdAt,
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: legacyData.length,
+      artists: legacyData,
+    });
+  } catch (error) {
+    console.error("Get Public Artists Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error fetching public artists",
+    });
+  }
 };
 // ==========================================
 // UPLOAD ARTIST PROFILE PHOTO

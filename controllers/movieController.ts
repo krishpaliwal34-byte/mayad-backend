@@ -69,7 +69,6 @@ export const getTrendingMovies = async (req: Request, res: Response) => {
   try {
     const movies = await MovieModel.find({
       isPublished: true,
-      isTrending: true,
     })
       .sort({ createdAt: -1 })
       .lean();
@@ -324,9 +323,9 @@ export const createMovie = async (req: Request, res: Response) => {
       shootingEndDate: shootingEndDate ? new Date(shootingEndDate) : undefined,
       shootingLocations: Array.isArray(shootingLocations) ? shootingLocations : [],
       projectStatus: projectStatus || "Published",
-      isOriginal: Boolean(isOriginal),
-      isTrending: Boolean(isTrending),
-      isTop5: Boolean(isTop5),
+      isOriginal: false,
+      isTrending: isTrending !== undefined ? Boolean(isTrending) : true,
+      isTop5: false,
       isPublished:
         isPublished !== undefined
           ? Boolean(isPublished)
